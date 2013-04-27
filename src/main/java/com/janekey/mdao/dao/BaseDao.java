@@ -81,6 +81,29 @@ public class BaseDao {
 		return rsList;
 	}
 
+    protected int selectCount(String sql, Object ... object) {
+        DBConnection dbcon = null;
+        int count = 0;
+        try {
+            dbcon = new DBConnection(DB);
+            dbcon.prepareStatement(sql);
+            dbcon.setParams(object);
+            ResultSet rs = dbcon.executeQuery();
+
+            if(rs.next()) {
+                count = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            LOGGER.error(e.getMessage());
+        } finally {
+            if (dbcon != null) {
+                dbcon.free();
+                dbcon = null;
+            }
+        }
+        return count;
+    }
+
     protected List selectList(String sql, Class cl, Object ... object) {
         DBConnection dbcon = null;
         List<Object> rsList = new ArrayList<Object>();
@@ -114,7 +137,7 @@ public class BaseDao {
         }
         return rsList;
     }
-	
+
 	/**
 	 * 查询并返回结果集(无参数)
 	 */
