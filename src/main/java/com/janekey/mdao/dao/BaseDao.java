@@ -266,6 +266,71 @@ public class BaseDao {
         return sql.toString();
     }
 
+    private String updateSql(List<Object> params, Object object) throws Exception {
+        StringBuilder sql = new StringBuilder();
+        sql.append("UPDATE ");
+        Class<?> cl = object.getClass();
+        // Get table name annnotation
+        Table table = cl.getAnnotation(Table.class);
+        if (table == null) {
+            throw new AnnotaionParseException("Count not find table annotation in model class");
+        }
+        sql.append(table.name()).append(" SET ");
+
+        Object id = null;
+        for (Field field : cl.getDeclaredFields()) {
+            // Get column annotation
+            Column column = field.getAnnotation(Column.class);
+            if (column != null) {
+                try {
+                    String methodName = getFieldGetMethod(field);
+                    Method method = cl.getDeclaredMethod(methodName);
+                    Object obj = method.invoke(object);
+
+                    if (obj != null) {
+                        if (column.column().equals("id")) {
+                            id = obj;
+                        } else {
+                            sql.append(column.column()).
+                                    append(" = ?,");
+                            params.add(obj);
+                        }
+                    }
+                } catch (NoSuchMethodException e) {
+                    LOGGER.error(e.getMessage());
+                } catch (IllegalAccessException e) {
+                    LOGGER.error(e.getMessage());
+                } catch (IllegalArgumentException e) {
+                    LOGGER.error(e.getMessage());
+                } catch (InvocationTargetException e) {
+                    LOGGER.error(e.getMessage());
+                }
+            }
+        }
+        sql.deleteCharAt(sql.length() - 1);
+        sql.append(" WHERE id = ? ");
+        params.add(id);
+        return sql.toString();
+    }
+
+    /**
+     * 将object数据匹配到数据库中的数据更新
+     * object对象必须有id字段
+     * @return 更新的行数
+     */
+    protected int updateObject(Object object) {
+        int update = 0;
+        try {
+            List<Object> params = new ArrayList<Object>();
+            String sql = updateSql(params, object);
+            update = executeUpdate(sql, params.toArray());
+        } catch (Exception e) {
+            LOGGER.error(e);
+            return 0;
+        }
+        return update;
+    }
+
     private void fillObject(Object object, Map<String, Object> rowMap)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Class<?> cl = object.getClass();
